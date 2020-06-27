@@ -4,9 +4,16 @@ global_asm!(include_str!("boot/entry64.asm"));
 pub extern "C" fn rust_main() -> ! {
     crate::interrupt::init();
     crate::timer::init();
-    unsafe {
-        llvm_asm!("ebreak"::::"volatile");
+    //println!("_start vaddr = 0x{:x}", _start as usize);
+    //println!("bootstacktop vaddr = 0x{:x}", bootstacktop as usize);
+    println!("hello world!");
+    unsafe{
+        llvm_asm!("mret"::::"volatile");
     }
+    unsafe {
+        llvm_asm!("ebreak"::::"volatile");       
+    }
+    
     panic!("end of rust_main");
     loop{}
 }

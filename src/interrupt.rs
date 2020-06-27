@@ -41,11 +41,22 @@ pub fn rust_trap(tf: &mut TrapFrame) {
     match tf.scause.cause(){
         //break point
         Trap::Exception(Exception::Breakpoint) => breakpoint(&mut tf.sepc),
+        //mret exception
+        Trap::Exception(Exception::IllegalInstruction) => illegal_instruction(&mut tf.sepc,&mut tf.stval),
         //s
         Trap::Interrupt(Interrupt::SupervisorTimer) =>super_timer(),
-        _ => panic!("undefined trao!")
+        
+        _ => panic!("undefined trap!")
     }
 }
+
+fn illegal_instruction(sepc: &mut usize, stval: &mut usize){
+   
+    println!("the trap valueis {}", stval);
+    panic!("an illegal instruction set @0x{:x}", sepc);
+    *sepc += 4;
+}
+
 
 fn breakpoint(sepc: &mut usize){
     println!("a breakpoint set @0x{:x}", sepc);
