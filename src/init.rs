@@ -1,21 +1,14 @@
 global_asm!(include_str!("boot/entry64.asm"));
+
 use crate::consts::*;
+use crate::memory::{
+    alloc_frame,
+    dealloc_frame
+};
 
 #[no_mangle]
 pub extern "C" fn rust_main() -> ! {
-    /*crate::interrupt::init();
-    crate::timer::init();
-    //println!("_start vaddr = 0x{:x}", _start as usize);
-    //println!("bootstacktop vaddr = 0x{:x}", bootstacktop as usize);
-    println!("hello world!");
-    unsafe{
-        llvm_asm!("mret"::::"volatile");
-    }
-    unsafe {
-        llvm_asm!("ebreak"::::"volatile");       
-    }
-    */
-    extern "C"{
+    extern "C" {
         fn end();
     }
     println!(
@@ -23,9 +16,29 @@ pub extern "C" fn rust_main() -> ! {
         end as usize - KERNEL_BEGIN_VADDR + KERNEL_BEGIN_PADDR,
         PHYSICAL_MEMORY_END
     );
+	println!(
+        "free physical memory ppn = [{:#x}, {:#x})",
+        ((end as usize - KERNEL_BEGIN_VADDR + KERNEL_BEGIN_PADDR) >> 12) + 1,
+        PHYSICAL_MEMORY_END >> 12
+	);
     crate::interrupt::init();
     crate::timer::init();
 
-    //panic!("end of rust_main");
-    loop{}
+	crate::memory::init(
+        ((end as usize - KERNEL_BEGIN_VADDR + KERNEL_BEGIN_PADDR) >> 12) + 1,
+        PHYSICAL_MEMORY_END >> 12
+    );
+    frame_allocating_test();
+    loop {}
+}
+
+fn frame_allocating_test() {
+    println!("alloc {:x?}", alloc_frame());
+    let f = alloc_frame();
+    println!("alloc {:x?}", f);
+    println!("alloc {:x?}", alloc_frame());
+    println!("dealloc {:x?}", f);
+    dealloc_frame(f.unwrap());
+    println!("alloc {:x?}", alloc_frame());
+    println!("alloc {:x?}", alloc_frame());
 }

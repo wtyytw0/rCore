@@ -11,3 +11,4 @@ pub struct TrapFrame {
     pub stval: usize, // Supervisor trap value
     pub scause: Scause, // Scause register: record the cause of exception/interrupt/trap
 }
+
