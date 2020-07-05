@@ -10,11 +10,13 @@ use riscv::register::{
     sscratch,
     sstatus
 };
-use crate::context::TrapFrame;
 use crate::timer::{
     TICKS,
     clock_set_next_event
 };
+
+use crate::context::TrapFrame;
+
 global_asm!(include_str!("trap/trap.asm"));
 
 pub fn init() {
@@ -24,52 +26,41 @@ pub fn init() {
         }        
         sscratch::write(0);
         stvec::write(__alltraps as usize, stvec::TrapMode::Direct);
-        sstatus::set_sie();
+
+	sstatus::set_sie();
     }
     println!("++++ setup interrupt! ++++");
 }
 
 #[no_mangle]
 pub fn rust_trap(tf: &mut TrapFrame) {
-    /*
-    println!("rust_trap!");
-    let cause = scause::read().cause();
-    let epc = sepc::read();
-    println!("trap: cause: {:?}, epc: 0x{:#x}", cause, epc);
-
-    tf.sepc += 2;*/
-    match tf.scause.cause(){
-        //break point
+    match tf.scause.cause() {
         Trap::Exception(Exception::Breakpoint) => breakpoint(&mut tf.sepc),
-        //mret exception
-        Trap::Exception(Exception::IllegalInstruction) => illegal_instruction(&mut tf.sepc,&mut tf.stval),
-        //s
-        Trap::Interrupt(Interrupt::SupervisorTimer) =>super_timer(),
-        
+        Trap::Interrupt(Interrupt::SupervisorTimer) => super_timer(),
+        Trap::Exception(Exception::InstructionPageFault) => page_fault(tf),
+        Trap::Exception(Exception::LoadPageFault) => page_fault(tf),
+        Trap::Exception(Exception::StorePageFault) => page_fault(tf),
         _ => panic!("undefined trap!")
     }
 }
 
-fn illegal_instruction(sepc: &mut usize, stval: &mut usize){
-   
-    println!("the trap valueis {}", stval);
-    panic!("an illegal instruction set @0x{:x}", sepc);
-    *sepc += 4;
-}
-
-
-fn breakpoint(sepc: &mut usize){
+fn breakpoint(sepc: &mut usize) {
     println!("a breakpoint set @0x{:x}", sepc);
     *sepc += 2;
 }
 
-fn super_timer(){
+fn super_timer() {
     clock_set_next_event();
-    unsafe{
+    unsafe {
         TICKS += 1;
-        if(TICKS == 100){
+        if TICKS == 100 {
             TICKS = 0;
             println!("* 100 ticks *");
         }
     }
+}
+
+fn page_fault(tf: &mut TrapFrame) {
+    println!("{:?} va = {:#x} instruction = {:#x}", tf.scause.cause(), tf.stval, tf.sepc);
+    panic!("page fault!");
 }
